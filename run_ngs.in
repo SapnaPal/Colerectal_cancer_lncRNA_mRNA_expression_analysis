@@ -1,0 +1,60 @@
+#!/bin/sh
+module load FastQC/0.12.1  #check quality
+module load fastp/0.23.4   # trim data
+module load hisat2/2.2.1   # genome indexing and mapping reads
+module load STAR/2.7.11b   # genome indexing and mapping reads
+module load samtools/1.20  # sam to bam conversion
+module load qualimap/v2.3  # 
+module load subread/2.0.6  # for featureCounts
+module load sratoolkit/3.1.1
+
+#fastq-dump --split-files SRR6191658
+#fastq-dump --split-files SRR6191657
+#fastq-dump --split-files SRR6191656
+#fastq-dump --split-files SRR6191655
+
+#fastqc -t 32 SRR6191658_1.fastq
+#fastqc -t 32 SRR6191658_2.fastq
+#fastqc -t 32 SRR6191657_1.fastq
+#fastqc -t 32 SRR6191657_2.fastq
+#fastqc -t 32 SRR6191656_1.fastq
+#fastqc -t 32 SRR6191656_2.fastq
+#fastqc -t 32 SRR6191655_1.fastq
+#fastqc -t 32 SRR6191655_2.fastq
+# or mkdir -p fastqc_reports_raw
+# fastqc raw_fastqs/PRJNA413956/*.fastq.gz -o fastqc_reports_raw/
+
+#READ TRIM AND FILTER
+#cd raw_fastqs/PRJNA413956/
+#fastp -i SRR6191658_1.fastq -I SRR6191658_2.fastq -o SRR6191658_1.fq.gz -O SRR6191658_2.fq.gz -w 48 -h SRR6191658.html
+#cd ../../
+
+#mkdir -p trimmed_fastqs fastp_reports
+
+#for R1_FILE in raw_fastqs/PRJNA413956/*_1.fastq; do
+#	SAMPLE_NAME=$(basename ${R1_FILE} _1.fastq)
+#	R2_FILE=raw_fastqs/PRJNA413956/${SAMPLE_NAME}_2.fastq
+#	echo "${SAMPLE_NAME}_2.fastq"
+
+#	fastp -i ${R1_FILE} -I ${R2_FILE} -o trimmed_fastqs/${SAMPLE_NAME}_R1.fastq -O trimmed_fastqs/${SAMPLE_NAME}_R2.fastq --json fastp_reports/${SAMPLE_NAME}.json --html fastp_reports/${SAMPLE_FILE}.html --detect_adapter_for_pe --cut_front --cut_tail --qualified_quality_phred 15 --length_required 50 --thread 8
+#done
+
+#Build STAR Index
+#mkdir -p star_index
+#STAR --runThreadN 16 --runMode genomeGenerate --genomeDir star_index --genomeFastaFiles reference_data/GRCh38.p14.genome.fa --sjdbGTFfile reference_data/gencode.v45.annotation.gtf --sjdbOverhang 99  #(read length -1, common for 100bp. Adjustable if your reads are different)
+
+#mkdir -p aligned_bams
+
+#for R1_FILE in trimmed_fastqs/*_R1.fastq; do
+#	SAMPLE_NAME=$(basename ${R1_FILE} _R1.fastq)
+#	R2_FILE=raw_fastqs/PRJNA413956/${SAMPLE_NAME}_R2.fastq
+#	
+#	STAR --runThreadN 16 --genomeDir star_index --readFilesIn ${R1_FILE} ${R2_FILE} --outFileNamePrefix aligned_bams/${SAMPLE_NAME}_ --outSAMtype BAM SortedByCoordinate --outSAMunmapped Within --outFilterType BySJout #splice junction filter
+#done
+
+#feature counts
+BAM_FILES=$(ls aligned_bams/*Aligned.sortedByCoord.out.bam)  #list of all bam files to count
+
+featureCounts -p -t exon -g gene_id -a reference_data/gencode.v45.annotation.gtf -o gene_counts_PRJNA4139556.txt ${BAM_FILES}
+
+
